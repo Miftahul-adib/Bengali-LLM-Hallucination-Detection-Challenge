@@ -1,20 +1,12 @@
-# অলীকবচন — Bengali LLM Hallucination Detection
+# Bengali LLM Hallucination Detection
 
-<p align="center">
-  <img src="https://img.shields.io/badge/Score-0.850%20Macro%20F1-brightgreen?style=for-the-badge"/>
-  <img src="https://img.shields.io/badge/Platform-Kaggle-blue?style=for-the-badge&logo=kaggle"/>
-  <img src="https://img.shields.io/badge/Language-Bengali-orange?style=for-the-badge"/>
-  <img src="https://img.shields.io/badge/Model-Qwen2.5--32B-purple?style=for-the-badge"/>
-</p>
 
-> **Competition:** [অলীকবচন | Bengali LLM Hallucination Detection Challenge](https://www.kaggle.com/competitions/bengali-hallucination/overview)  
-> **Final Score:** `0.850` Macro F1 on the public leaderboard
 
 ---
 
 ## The Problem
 
-Large language models frequently generate responses that sound fluent and confident but are factually wrong — a phenomenon known as **hallucination**. This is especially severe for Bengali, the 6th most spoken language in the world, where training data is sparse, retrieval databases are limited, and most evaluation benchmarks simply don't exist.
+Large language models frequently generate responses that sound fluent and confident but are factually wrong, a phenomenon known as **hallucination**. This is especially severe for Bengali, the 6th most spoken language in the world, where training data is sparse, retrieval databases are limited, and most evaluation benchmarks simply don't exist.
 
 The task: given a Bengali question, an LLM-generated response, and (for some rows) a grounding context passage, classify whether the response is **faithful** (`label = 1`) or **hallucinated** (`label = 0`).
 
@@ -70,59 +62,6 @@ Rather than throwing everything at an LLM judge, this solution uses a **cascaded
          (route, track) prior
 ```
 
----
-
-## Key Fixes & Design Decisions
-
-### Fix 1 — Relation-Span Context Verification (93 errors fixed)
-
-**Problem:** The old Layer 3 would scan the entire context passage for the response. A passage mentioning both a *founding year* and a *renovation year* would incorrectly accept either year as valid for a "when was it founded?" question.
-
-**Solution:** Map each question type to Bengali trigger words (জন্ম, মৃত্যু, প্রতিষ্ঠা, প্রকাশ, আবিষ্কার...), extract only the sentences containing the relevant trigger, and check the response against that sub-span only.
-
----
-
-### Fix 2 — Answer-Type Gate (4+ errors fixed)
-
-Before any retrieved gold answer is used to label a row, it must pass a semantic type check:
-
-| Question keyword | Requirement |
-|-----------------|-------------|
-| কত সালে / কবে (year) | Response must contain a 4-digit year |
-| কতটি / কয়টি (count) | Response must contain a digit |
-| কে (who) | Response must not be a bare number |
-| কোথায় (where) | Response must not start with a 4-digit year |
-| বয়স / বছর বয়সে (age) | Response must have a number but no 4-digit year |
-
----
-
-### Fix 3 — Strict Short-Answer Comparison (~40 errors fixed)
-
-The old Jaccard-based `resp_agree` with threshold 0.5 was too lenient for short answers. `বৃহস্পতিবার` (Thursday) and `শুক্রবার` (Friday) would match. `১৯১৩` and `১৯৮৩` would match.
-
-**Solution:** For answers ≤ 3 tokens, require near-exact match. Also explicitly check numeric sign (`ধনাত্মক ½` ≠ `ঋণাত্মক ½`) and fraction ordering (`1/2` ≠ `2/1`).
-
----
-
-### Fix 4 — Relaxed QB Threshold for Language Route (52 errors fixed)
-
-Bengali grammar questions (antonyms, idiom meanings, prefix classes) are often paraphrased differently in the question bank. A single strict similarity threshold rejected many valid matches.
-
-**Solution:** Use a lower threshold (0.82 vs 0.88) for questions routed to the `language` track.
-
----
-
-### Fix 5 — Expanded Math Routing (10 errors fixed)
-
-The math regex was missing several common Bengali word-problem patterns. Added: day-of-week calculations, age calculations, verbal percentage expressions (শতাংশ হ্রাস/বৃদ্ধি), compound interest (চক্রবৃদ্ধি সুদ), profit/loss verbal forms, LCM/GCD, algebraic series.
-
----
-
-### Fix 6 — L2 Disagree → LLM Judge (27 errors fixed)
-
-Previously, when a retrieved Squad-BN answer *disagreed* with the candidate response, the row was automatically labelled `0`. This was wrong — a candidate can be correct even when it doesn't match the specific retrieved answer.
-
-**Solution:** Disagree rows are re-routed to the LLM judge with the retrieved answer as a hint, not as a verdict.
 
 ---
 
@@ -178,7 +117,6 @@ Bengali Wikipedia (`wikimedia/wikipedia 20231101.bn`) — up to 250,000 chunked 
 
 ## Notebook Structure
 
-The full solution is in [`llm-hallucination-olikbochon.ipynb`](./llm-hallucination-olikbochon.ipynb).
 
 | Cell | Description |
 |------|-------------|
@@ -211,3 +149,6 @@ The full solution is in [`llm-hallucination-olikbochon.ipynb`](./llm-hallucinati
 
 **[অলীকবচন | Bengali LLM Hallucination Detection Challenge](https://www.kaggle.com/competitions/bengali-hallucination/overview)**  
 Detect hallucinations in Bengali language-model outputs. Binary classification evaluated on Macro F1.
+
+
+ **Final Score:** `0.850` Macro F1 on the public leaderboard
